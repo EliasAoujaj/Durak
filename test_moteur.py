@@ -1,5 +1,5 @@
 from cartes import Carte, Couleur
-from moteur import nouvelle_partie, premier_joueur, TAILLE_MAIN
+from moteur import nouvelle_partie, premier_joueur, TAILLE_MAIN, joueur_actif, defenseur
 import pytest
 
 def test_distribution():
@@ -32,3 +32,47 @@ def test_graine():
 
 def test_premier_joueur(mains, attendu):
     assert premier_joueur(mains,Couleur.PIQUE) == attendu
+
+def test_table_vide_attaquant_joue():
+    etat = nouvelle_partie(42)
+    assert joueur_actif(etat) == etat.attaquant
+
+def test_table_vide_attaquant_joue():
+    etat = nouvelle_partie(42)
+    assert joueur_actif(etat) == etat.attaquant
+
+
+def test_attaque_non_battue_defenseur_joue():
+    etat = nouvelle_partie(42)
+    etat.table = [(Carte(8, Couleur.COEUR), None)]
+    assert joueur_actif(etat) == defenseur(etat)
+
+
+def test_defenseur_prend_attaquant_joue():
+    etat = nouvelle_partie(42)
+    etat.table = [(Carte(8, Couleur.COEUR), None)]
+    etat.defenseur_prend = True
+    assert joueur_actif(etat) == etat.attaquant
+
+
+def test_tout_battu_attaquant_joue():
+    etat = nouvelle_partie(42)
+    etat.table = [
+        (Carte(8, Couleur.COEUR), Carte(10, Couleur.COEUR)),
+        (Carte(8, Couleur.TREFLE), Carte(13, Couleur.TREFLE)),
+    ]
+    assert joueur_actif(etat) == etat.attaquant
+
+def test_une_battue_une_non_battue_defenseur_joue():
+    etat = nouvelle_partie(42)
+    etat.table = [
+        (Carte(8, Couleur.COEUR), Carte(10, Couleur.COEUR)),
+        (Carte(8, Couleur.TREFLE), None),
+    ]
+    assert joueur_actif(etat) == defenseur(etat)
+
+
+def test_defenseur_est_l_autre_joueur():
+    etat = nouvelle_partie(42)
+    assert defenseur(etat) != etat.attaquant
+    assert defenseur(etat) in (0, 1)
