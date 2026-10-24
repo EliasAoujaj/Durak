@@ -22,9 +22,20 @@ class Carte:
         else:
             return f"{self.valeur}{COULEURS[self.couleur]}"
 
+def nouveau_paquet():
+    return [Carte(val,col) for val in VALEURS for col in Couleur]
 
-c = Carte(8, Couleur.TREFLE)
+def bat(attaque, defense, atout):
+    cas_1 = attaque.couleur == defense.couleur and attaque.valeur < defense.valeur
+    cas_2 = attaque.couleur != atout and defense.couleur == atout
+    return cas_1 or cas_2
 
-print(c == Carte(8, Couleur.TREFLE))
-print(Carte(8, Couleur.TREFLE))
-print(Carte(12, Couleur.COEUR))
+if __name__ == "__main__":
+    c = Carte(8, Couleur.TREFLE)
+    print(c == Carte(8, Couleur.TREFLE))
+    print(Carte(8, Couleur.TREFLE))
+    print(Carte(12, Couleur.COEUR))
+    paquet = nouveau_paquet()
+    print(len(paquet))
+    print(len(set(paquet)))
+    print(*paquet)
