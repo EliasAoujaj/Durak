@@ -270,3 +270,30 @@ def test_defense_seulement_sur_attaques_non_battues():
         PRENDRE,
         defense(DIX_COEUR, HUIT_COEUR),
     }
+
+import random
+from moteur import actions_legales, appliquer, fin_de_partie
+
+
+def nombre_total_cartes(etat):
+    """Compte toutes les cartes du jeu : mains, pioche, défausse et table."""
+    sur_table = sum(1 + (defense is not None) for _, defense in etat.table)
+    return (sum(len(main) for main in etat.mains)
+            + len(etat.pioche) + len(etat.defausse) + sur_table)
+
+
+def test_parties_aleatoires():
+    for seed in range(1000):
+        etat = nouvelle_partie(seed)
+        rng = random.Random(seed)
+        for _ in range(10_000):
+            terminee, classement = fin_de_partie(etat)
+            if terminee:
+                break
+            actions = actions_legales(etat)
+            assert actions, f"aucune action possible, graine {seed}"
+            appliquer(etat, rng.choice(actions))
+            assert nombre_total_cartes(etat) == 36, f"cartes perdues ou dupliquées, graine {seed}"
+        else:
+            assert False, f"partie trop longue, graine {seed}"
+        assert sorted(classement) == [0, 1], f"classement incorrect, graine {seed}"

@@ -17,6 +17,7 @@ class EtatPartie:
     defausse: list[Carte]
     attaquant: int
     defenseur_prend: bool
+    classement: list[int]
 
 def premier_joueur(mains, atout):
     plus_petit = [15 for _ in range(NB_JOUEUR)] # 15 > as : signifie "pas d'atout"
@@ -44,7 +45,8 @@ def nouvelle_partie(seed: int) -> EtatPartie:
         table=[],
         defausse=[],
         attaquant=premier_joueur(mains, pioche[0].couleur),
-        defenseur_prend=False
+        defenseur_prend=False,
+        classement=[]
     )
 
 class TypeAction(Enum):
@@ -136,6 +138,82 @@ def actions_defenseur(etat: EtatPartie) -> list[Action]:
                     cible=att,
                 ))    
     return liste_defenses
+
+def actions_legales(etat):
+    if joueur_actif(etat) == etat.attaquant:
+        return actions_attaquant(etat)
+    else:
+        return actions_defenseur(etat)
+
+def appliquer(etat: EtatPartie, action: Action) -> None:
+    """Joue l'action et modifie l'état sur place."""
+    if action.type_action == TypeAction.ATTAQUER:
+        main = etat.mains[etat.attaquant]
+        for carte in action.cartes_jouees:
+            main.remove(carte)
+            etat.table.append((carte, None))
+
+    elif action.type_action == TypeAction.DEFENDRE:
+        (carte,) = action.cartes_jouees    # déballe le frozenset d'une seule carte
+        etat.mains[defenseur(etat)].remove(carte)
+        etat.table = [(attaque, carte) if attaque == action.cible else (attaque, defense)
+                    for attaque, defense in etat.table]
+
+    elif action.type_action == TypeAction.TRANSFERER:
+        ancien_defenseur = defenseur(etat)    # calculé avant de changer les rôles
+        main = etat.mains[ancien_defenseur]
+        for carte in action.cartes_jouees:
+            main.remove(carte)
+            etat.table.append((carte, None))
+        etat.attaquant = ancien_defenseur
+
+    elif action.type_action == TypeAction.PRENDRE:
+        etat.defenseur_prend = True
+
+    elif action.type_action == TypeAction.PASSER:
+        fin_attaque(etat)
+
+def fin_attaque(etat: EtatPartie) -> None:
+    cartes_a_recup = [carte for paire in etat.table for carte in paire if carte is not None]
+    if etat.defenseur_prend:
+        etat.mains[defenseur(etat)] += cartes_a_recup
+    else:
+        etat.defausse += cartes_a_recup
+    completer(etat.mains[etat.attaquant], etat.pioche)
+    completer(etat.mains[defenseur(etat)], etat.pioche)
+    if not etat.pioche:
+        for i in range(NB_JOUEUR):
+            joueur = (etat.attaquant + i) % NB_JOUEUR
+            if not etat.mains[joueur] and joueur not in etat.classement:
+                etat.classement.append(joueur)
+    if etat.defenseur_prend:
+        etat.attaquant = (etat.attaquant + 2) % NB_JOUEUR #formule juste pour tous les nombres de joueur
+    else:
+        etat.attaquant = (etat.attaquant + 1) % NB_JOUEUR
+    etat.table, etat.defenseur_prend = [], False
+
+def fin_de_partie(etat: EtatPartie) -> (Bool, NoneType | list[int]):
+    if len(etat.classement) >= NB_JOUEUR - 1:
+        for i in range(NB_JOUEUR):
+            if i not in etat.classement:
+                etat.classement.append(i)
+        return True, etat.classement
+    else:
+        return False, None
+
+
+def completer(main: list[Carte], pioche: list[Carte]) -> None:
+    while len(main) < TAILLE_MAIN and pioche:
+        main.append(pioche.pop())
+    
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
