@@ -1,5 +1,5 @@
 from cartes import Carte, Couleur
-from moteur import nouvelle_partie, premier_joueur, TAILLE_MAIN, joueur_actif, defenseur
+from moteur import nouvelle_partie, premier_joueur, TAILLE_MAIN, joueur_actif, defenseur, non_battues, valeurs_sur_table, sous_groupes, par_valeur
 import pytest
 
 def test_distribution():
@@ -71,8 +71,56 @@ def test_une_battue_une_non_battue_defenseur_joue():
     ]
     assert joueur_actif(etat) == defenseur(etat)
 
-
 def test_defenseur_est_l_autre_joueur():
     etat = nouvelle_partie(42)
     assert defenseur(etat) != etat.attaquant
     assert defenseur(etat) in (0, 1)
+
+HUIT_COEUR = Carte(8, Couleur.COEUR)
+HUIT_TREFLE = Carte(8, Couleur.TREFLE)
+DIX_COEUR = Carte(10, Couleur.COEUR)
+DAME_PIQUE = Carte(12, Couleur.PIQUE)
+
+def test_non_battues_table_vide():
+    etat = nouvelle_partie(42)
+    assert non_battues(etat) == []
+
+def test_non_battues_table_mixte():
+    etat = nouvelle_partie(42)
+    etat.table = [(HUIT_COEUR, DIX_COEUR), (HUIT_TREFLE, None)]
+    assert non_battues(etat) == [HUIT_TREFLE]
+
+def test_valeurs_sur_table_vide():
+    etat = nouvelle_partie(42)
+    assert valeurs_sur_table(etat) == set()
+
+def test_valeurs_sur_table_attaques_et_defenses():
+    etat = nouvelle_partie(42)
+    etat.table = [(HUIT_COEUR, DIX_COEUR), (HUIT_TREFLE, None)]
+    assert valeurs_sur_table(etat) == {8, 10}
+
+def test_sous_groupes_liste_vide():
+    assert sous_groupes([]) == []
+
+def test_sous_groupes_deux_cartes():
+    resultat = sous_groupes([HUIT_COEUR, HUIT_TREFLE])
+    assert set(resultat) == {
+        frozenset({HUIT_COEUR}),
+        frozenset({HUIT_TREFLE}),
+        frozenset({HUIT_COEUR, HUIT_TREFLE}),
+    }
+
+def test_sous_groupes_trois_cartes():
+    resultat = sous_groupes([HUIT_COEUR, HUIT_TREFLE, DAME_PIQUE])
+    assert len(resultat) == 7
+    assert len(set(resultat)) == 7          # tous différents
+    assert all(len(g) > 0 for g in resultat)  # aucun vide
+
+def test_par_valeur():
+    groupes = par_valeur([HUIT_COEUR, DAME_PIQUE, HUIT_TREFLE])
+    assert set(groupes.keys()) == {8, 12}
+    assert set(groupes[8]) == {HUIT_COEUR, HUIT_TREFLE}
+    assert set(groupes[12]) == {DAME_PIQUE}
+
+def test_par_valeur_main_vide():
+    assert par_valeur([]) == {}

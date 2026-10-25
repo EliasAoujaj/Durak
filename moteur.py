@@ -69,6 +69,29 @@ def joueur_actif(etat: EtatPartie) -> int:
 def defenseur(etat: EtatPartie) -> int:
     return (etat.attaquant + 1) % NB_JOUEUR
 
+def non_battues(etat) -> list[Carte]:
+    return [attaque for attaque, defense in etat.table if defense is None]
+
+def valeurs_sur_table(etat) -> set[int]:
+    return {attaque.valeur for attaque, _ in etat.table} | {defense.valeur for _, defense in etat.table if defense is not None}
+
+def sous_groupes(cartes) -> list[frozenset[Carte]]:
+    liste = []
+    for i in range(1, 2 ** len(cartes)):
+        ensemble = set()
+        for j in range(len(cartes)):
+            if (i >> j) & 1: # >> decale i de j bits vers la droite, & 1 garde le dernier bit, on teste donc si le jieme bit vaut 1
+                ensemble.add(cartes[j])
+        liste.append(frozenset(ensemble))
+    return liste
+
+def par_valeur(main) -> dict[int, list[Carte]]:
+    groupes = {}
+    for carte in main:
+        groupes.setdefault(carte.valeur, []).append(carte)
+    return groupes
+
+
 if __name__ == "__main__":
     etat = nouvelle_partie(42)
     print("Atout :", etat.atout, "- carte du dessous :", etat.pioche[0])
