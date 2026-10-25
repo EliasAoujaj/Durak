@@ -124,3 +124,75 @@ def test_par_valeur():
 
 def test_par_valeur_main_vide():
     assert par_valeur([]) == {}
+
+from moteur import actions_attaquant, Action, TypeAction
+
+
+def etat_test(main_att, main_def, table, prend=False):
+    """Crée un état où le joueur 0 attaque avec les mains et la table données."""
+    etat = nouvelle_partie(42)
+    etat.attaquant = 0
+    etat.mains = [main_att, main_def]
+    etat.table = table
+    etat.defenseur_prend = prend
+    return etat
+
+
+def main_quelconque(n):
+    """Une main de n cartes de carreau, pour le défenseur."""
+    return [Carte(v, Couleur.CARREAU) for v in range(6, 6 + n)]
+
+
+def attaque(*cartes):
+    return Action(TypeAction.ATTAQUER, frozenset(cartes))
+
+
+PASSER = Action(TypeAction.PASSER)
+DIX_PIQUE = Carte(10, Couleur.PIQUE)
+
+
+def test_attaque_initiale():
+    etat = etat_test([HUIT_COEUR, HUIT_TREFLE, DAME_PIQUE], main_quelconque(6), [])
+    assert set(actions_attaquant(etat)) == {
+        attaque(HUIT_COEUR),
+        attaque(HUIT_TREFLE),
+        attaque(HUIT_COEUR, HUIT_TREFLE),
+        attaque(DAME_PIQUE),
+    }
+
+
+def test_attaque_initiale_limitee_par_defenseur():
+    etat = etat_test([HUIT_COEUR, HUIT_TREFLE, DAME_PIQUE], main_quelconque(1), [])
+    assert set(actions_attaquant(etat)) == {
+        attaque(HUIT_COEUR),
+        attaque(HUIT_TREFLE),
+        attaque(DAME_PIQUE),
+    }
+
+
+def test_ajout_valeurs_attaque_et_defense():
+    # 8♥ battu par 10♥ : l'attaquant peut ajouter un 8 ou un 10, pas la dame
+    etat = etat_test([HUIT_TREFLE, DIX_PIQUE, DAME_PIQUE], main_quelconque(5),
+                     [(HUIT_COEUR, DIX_COEUR)])
+    assert set(actions_attaquant(etat)) == {
+        PASSER,
+        attaque(HUIT_TREFLE),
+        attaque(DIX_PIQUE),
+    }
+
+
+def test_table_pleine_seulement_passer():
+    table = [(Carte(v, Couleur.COEUR), Carte(v, Couleur.CARREAU)) for v in range(6, 12)]
+    etat = etat_test([Carte(7, Couleur.TREFLE)], main_quelconque(6), table)
+    assert actions_attaquant(etat) == [PASSER]
+
+
+def test_apres_prise_limite_atteinte():
+    # le défenseur a pris avec 1 carte en main et 1 attaque non battue : plus d'ajout
+    etat = etat_test([HUIT_TREFLE], main_quelconque(1), [(HUIT_COEUR, None)], prend=True)
+    assert actions_attaquant(etat) == [PASSER]
+
+
+def test_apres_prise_ajout_possible():
+    etat = etat_test([HUIT_TREFLE], main_quelconque(3), [(HUIT_COEUR, None)], prend=True)
+    assert set(actions_attaquant(etat)) == {PASSER, attaque(HUIT_TREFLE)}
