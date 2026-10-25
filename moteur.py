@@ -2,7 +2,7 @@ import random
 from enum import Enum
 
 from dataclasses import dataclass
-from cartes import Carte, Couleur, nouveau_paquet
+from cartes import Carte, Couleur, nouveau_paquet, bat
 
 TAILLE_MAIN = 6
 MAX_ATTAQUES = 6
@@ -112,6 +112,30 @@ def actions_attaquant(etat: EtatPartie) -> list[Action]:
                 cartes_jouees=frozenset({carte})
             ) for carte in etat.mains[etat.attaquant] if carte.valeur in valeurs]
     return liste_attaques
+
+def actions_defenseur(etat: EtatPartie) -> list[Action]:
+    main = etat.mains[defenseur(etat)]
+    liste_defenses = [Action(
+        type_action=TypeAction.PRENDRE
+    )]
+    if etat.table and len(non_battues(etat)) == len(etat.table):
+        candidates = [carte for carte in main if carte.valeur == etat.table[0][0].valeur] #si toutes les attaques sont non battues (test precedent), elles ont ttes la meme valeur, par exemple la premiere carte sur la table
+        for groupe in sous_groupes(candidates):
+            total = len(etat.table) + len(groupe)
+            if total <= len(etat.mains[(defenseur(etat) + 1) % NB_JOUEUR]) and total <= MAX_ATTAQUES: #utile pour le cas ou nb_joueur > 2, puis si on autorise a jouer avec plusieurs paquets de cartes
+                liste_defenses.append(Action(
+                    type_action=TypeAction.TRANSFERER,
+                    cartes_jouees=groupe,
+                ))
+    for att in non_battues(etat):
+        for carte in main:
+            if bat(att, carte, etat.atout):
+                liste_defenses.append(Action(
+                    type_action=TypeAction.DEFENDRE,
+                    cartes_jouees=frozenset({carte}),
+                    cible=att,
+                ))    
+    return liste_defenses
 
 
 if __name__ == "__main__":

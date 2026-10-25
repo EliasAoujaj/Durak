@@ -131,6 +131,7 @@ from moteur import actions_attaquant, Action, TypeAction
 def etat_test(main_att, main_def, table, prend=False):
     """Crée un état où le joueur 0 attaque avec les mains et la table données."""
     etat = nouvelle_partie(42)
+    etat.atout = Couleur.PIQUE
     etat.attaquant = 0
     etat.mains = [main_att, main_def]
     etat.table = table
@@ -196,3 +197,76 @@ def test_apres_prise_limite_atteinte():
 def test_apres_prise_ajout_possible():
     etat = etat_test([HUIT_TREFLE], main_quelconque(3), [(HUIT_COEUR, None)], prend=True)
     assert set(actions_attaquant(etat)) == {PASSER, attaque(HUIT_TREFLE)}
+
+    
+
+from moteur import actions_defenseur
+
+HUIT_PIQUE = Carte(8, Couleur.PIQUE)
+HUIT_CARREAU = Carte(8, Couleur.CARREAU)
+SEPT_COEUR = Carte(7, Couleur.COEUR)
+SIX_PIQUE = Carte(6, Couleur.PIQUE)
+DAME_CARREAU = Carte(12, Couleur.CARREAU)
+
+PRENDRE = Action(TypeAction.PRENDRE)
+
+
+def defense(carte, cible):
+    return Action(TypeAction.DEFENDRE, frozenset({carte}), cible)
+
+
+def transfert(*cartes):
+    return Action(TypeAction.TRANSFERER, frozenset(cartes))
+
+
+def test_defense_simple():
+    # 10♥ bat le 8♥, le 6♠ aussi (atout) ; le 7♥ et la D♦ non
+    etat = etat_test(main_quelconque(6), [DIX_COEUR, SEPT_COEUR, SIX_PIQUE, DAME_CARREAU],
+                     [(HUIT_COEUR, None)])
+    assert set(actions_defenseur(etat)) == {
+        PRENDRE,
+        defense(DIX_COEUR, HUIT_COEUR),
+        defense(SIX_PIQUE, HUIT_COEUR),
+    }
+
+
+def test_transferts_possibles():
+    # deux 8 en main : trois transferts ; le 8♠ peut aussi défendre (atout)
+    etat = etat_test(main_quelconque(6), [HUIT_TREFLE, HUIT_PIQUE, DAME_CARREAU],
+                     [(HUIT_COEUR, None)])
+    assert set(actions_defenseur(etat)) == {
+        PRENDRE,
+        transfert(HUIT_TREFLE),
+        transfert(HUIT_PIQUE),
+        transfert(HUIT_TREFLE, HUIT_PIQUE),
+        defense(HUIT_PIQUE, HUIT_COEUR),
+    }
+
+
+def test_transfert_limite_par_main_attaquant():
+    # l'attaquant n'a que 2 cartes : il ne pourra pas défendre 3 attaques
+    etat = etat_test(main_quelconque(2), [HUIT_TREFLE, HUIT_PIQUE],
+                     [(HUIT_COEUR, None)])
+    assert set(actions_defenseur(etat)) == {
+        PRENDRE,
+        transfert(HUIT_TREFLE),
+        transfert(HUIT_PIQUE),
+        defense(HUIT_PIQUE, HUIT_COEUR),
+    }
+
+
+def test_pas_de_transfert_si_une_attaque_battue():
+    # le 8♣ ne peut ni transférer (une attaque est battue) ni battre le 8♦
+    etat = etat_test(main_quelconque(6), [HUIT_TREFLE],
+                     [(HUIT_COEUR, DIX_COEUR), (HUIT_CARREAU, None)])
+    assert actions_defenseur(etat) == [PRENDRE]
+
+
+def test_defense_seulement_sur_attaques_non_battues():
+    # deux attaques non battues, le 10♥ ne bat que le 8♥
+    etat = etat_test(main_quelconque(6), [DIX_COEUR],
+                     [(HUIT_COEUR, None), (HUIT_CARREAU, None)])
+    assert set(actions_defenseur(etat)) == {
+        PRENDRE,
+        defense(DIX_COEUR, HUIT_COEUR),
+    }
