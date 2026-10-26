@@ -30,6 +30,8 @@ def bat(attaque, defense, atout):
     cas_2 = attaque.couleur != atout and defense.couleur == atout
     return cas_1 or cas_2
 
+
+
 if __name__ == "__main__":
     c = Carte(8, Couleur.TREFLE)
     print(c == Carte(8, Couleur.TREFLE))
