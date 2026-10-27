@@ -3,6 +3,7 @@
 import random
 
 from cartes import Carte, Couleur
+from memoire import Memoire
 from moteur import Action, EtatPartie, TypeAction, defenseur, non_battues
 
 
@@ -48,6 +49,11 @@ def contient_atout(action: Action, atout: Couleur) -> bool:
 
 def de_type(actions: list[Action], type_action: TypeAction) -> list[Action]:
     return [a for a in actions if a.type_action == type_action]
+
+
+# Les meilleurs réglages trouvés par recherche.py (61 % contre la version de base)
+REGLAGES_RECHERCHE = dict(bonus_atout=20, pioche_fin=4, bonus_fin=5,
+                          seuil_ajout=30, seuil_transfert=10, seuil_defense=30)
 
 
 class JoueurPetit(Joueur):
@@ -114,8 +120,12 @@ class JoueurPetit(Joueur):
         # choix par défaut si aucune règle ne s'applique (par exemple une action inconnue)
         return choix if choix is not None else actions[0]
 
+    def cout_attaque(self, action: Action, etat: EtatPartie) -> float:
+        """Coût d'une attaque. Les sous-classes peuvent le modifier sans toucher au reste."""
+        return self.cout_moyen(action, etat)
+
     def choisir_attaque(self, etat: EtatPartie, actions: list[Action]) -> Action | None:
-        cout = lambda a: self.cout_moyen(a, etat)
+        cout = lambda a: self.cout_attaque(a, etat)
         attaques = de_type(actions, TypeAction.ATTAQUER)
         if not etat.table:
             # attaque initiale : la moins chère par carte, et à coût égal la plus grosse
@@ -149,3 +159,40 @@ class JoueurPetit(Joueur):
                 and cout(meilleure) > self.seuil_defense):
             return prendre
         return meilleure
+
+
+class JoueurCompteur(JoueurPetit):
+    """JoueurPetit qui compte les cartes : il préfère attaquer avec des cartes
+    que l'adversaire ne pourra probablement pas battre.
+
+    Tant que la pioche n'est pas vide, le comptage ne s'applique pas aux atouts :
+    sinon le joueur les gaspille en attaque, parce qu'ils sont souvent imbattables
+    (les mesures montrent qu'il perd alors nettement contre JoueurPetit).
+
+    bonus_imbattable : de combien baisse le coût d'une carte sûre d'être imbattable
+    (le coût baisse proportionnellement à la probabilité). Les autres réglages
+    sont ceux de JoueurPetit.
+    """
+
+    def __init__(self, bonus_imbattable: float = 10, **reglages):
+        super().__init__(**reglages)
+        self.bonus_imbattable = bonus_imbattable
+        self.memoire = None
+
+    def nom(self) -> str:
+        return "JoueurCompteur"
+
+    def debut_partie(self, moi: int, nb_joueurs: int) -> None:
+        self.memoire = Memoire(moi, nb_joueurs)   # une mémoire neuve à chaque partie
+
+    def observer(self, etat: EtatPartie, joueur: int, action: Action) -> None:
+        self.memoire.mettre_a_jour(etat, joueur, action)
+
+    def cout_attaque(self, action: Action, etat: EtatPartie) -> float:
+        cout = self.cout_moyen(action, etat)
+        if etat.pioche and contient_atout(action, etat.atout):
+            return cout
+        adversaire = defenseur(etat)
+        probas = [self.memoire.proba_imbattable(etat, c, adversaire) for c in action.cartes_jouees]
+        reduction = self.bonus_imbattable * sum(probas) / len(probas)
+        return cout - reduction

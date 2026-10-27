@@ -9,13 +9,16 @@ from dataclasses import dataclass
 from joueurs import Joueur, JoueurAleatoire, JoueurPetit
 from moteur import actions_legales, appliquer, fin_de_partie, joueur_actif, nouvelle_partie
 
-MAX_COUPS = 10_000   # garde-fou contre une partie qui ne se terminerait jamais
+MAX_COUPS = 10_000   # au-delà, la partie est déclarée nulle (boucle infinie)
 
 
-def jouer_partie(seed: int, joueurs: list[Joueur]) -> list[int]:
+def jouer_partie(seed: int, joueurs: list[Joueur]) -> list[int] | None:
     """Joue une partie complète. joueurs[p] contrôle la place p.
 
     Renvoie le classement : la liste des places, de la première à la dernière.
+    Renvoie None si la partie dépasse MAX_COUPS : les règles permettent des boucles
+    infinies (deux joueurs qui ramassent à tour de rôle sans jamais vider leurs mains),
+    une telle partie est alors comptée comme nulle.
     """
     etat = nouvelle_partie(seed)
     for place, joueur in enumerate(joueurs):
@@ -34,7 +37,7 @@ def jouer_partie(seed: int, joueurs: list[Joueur]) -> list[int]:
             joueur.observer(etat, actif, action)
         appliquer(etat, action)
 
-    raise RuntimeError(f"partie trop longue, graine {seed}")
+    return None
 
 
 @dataclass
@@ -42,9 +45,10 @@ class Resultat:
     """Bilan d'un joueur sur un match."""
     nom: str
     parties: int
-    somme_positions: int = 0   # 0 = premier, N - 1 = durak
+    somme_positions: float = 0   # 0 = premier, N - 1 = durak
     victoires: int = 0
     duraks: int = 0
+    nuls: int = 0              # parties interrompues car trop longues
 
     @property
     def position_moyenne(self) -> float:
@@ -98,6 +102,11 @@ def match_sequentiel(joueurs: list[Joueur], n_donnes: int, seed_depart: int) -> 
         for r in range(n):
             places = joueurs[r:] + joueurs[:r]   # à la place p : le joueur d'origine (p + r) % n
             classement = jouer_partie(seed, places)
+            if classement is None:
+                for res in resultats:
+                    res.nuls += 1
+                    res.somme_positions += (n - 1) / 2   # position moyenne : ni gagné ni perdu
+                continue
             for position, place in enumerate(classement):
                 res = resultats[(place + r) % n]
                 res.somme_positions += position
@@ -115,6 +124,7 @@ def fusionner(blocs: list[list[Resultat]]) -> list[Resultat]:
             t.somme_positions += res.somme_positions
             t.victoires += res.victoires
             t.duraks += res.duraks
+            t.nuls += res.nuls
     return total
 
 
@@ -134,7 +144,8 @@ def afficher(resultats: list[Resultat]) -> None:
     for res in resultats:
         print(f"{res.nom:<20} victoires {res.taux_victoire:6.1%} "
               f"± {demi_intervalle(res.taux_victoire, res.parties):.1%}   "
-              f"durak {res.taux_durak:6.1%}   position moyenne {res.position_moyenne:.3f}")
+              f"durak {res.taux_durak:6.1%}   position moyenne {res.position_moyenne:.3f}"
+              + (f"   nuls {res.nuls}" if res.nuls else ""))
 
 
 if __name__ == "__main__":
