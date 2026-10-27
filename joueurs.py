@@ -609,3 +609,36 @@ class JoueurAmeliore(JoueurPetit):
                 and cout(meilleure) > self.seuil_defense):
             return prendre
         return meilleure
+
+
+# Les règles validées par le plan d'expériences (52,3 % contre JoueurPetit réglé)
+REGLES_VALIDEES = ("planification", "transfert_libre", "pas_atout_ouverture_fin",
+                   "presque_vide", "simples")
+
+
+class JoueurFinalAmeliore(JoueurFinal, JoueurAmeliore):
+    """JoueurFinal dont l'heuristique (utilisée tant que la pioche n'est pas vide)
+    applique les règles validées.
+
+    Héritage multiple : Python cherche chaque méthode dans l'ordre
+    JoueurFinalAmeliore → JoueurFinal → JoueurCompteur → JoueurAmeliore → JoueurPetit.
+    - choisir vient de JoueurFinal (minimax quand la pioche est vide) ;
+    - cout_attaque vient de JoueurCompteur (le comptage des cartes) ;
+    - choisir_attaque et choisir_defense viennent de JoueurAmeliore (les règles).
+    """
+
+    def __init__(self, avec: tuple = REGLES_VALIDEES, **reglages):
+        super().__init__(avec=avec, **(reglages or REGLAGES_RECHERCHE))
+
+    def nom(self) -> str:
+        return "JoueurFinal+"
+
+
+class JoueurPimcAmeliore(JoueurPimc, JoueurAmeliore):
+    """JoueurPimc avec, de même, les règles validées dans son heuristique."""
+
+    def __init__(self, avec: tuple = REGLES_VALIDEES, **reglages):
+        super().__init__(avec=avec, **(reglages or REGLAGES_RECHERCHE))
+
+    def nom(self) -> str:
+        return "JoueurPimc+"

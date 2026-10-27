@@ -68,3 +68,15 @@ def test_ameliore_toutes_regles_sans_erreur():
     for avec in [REGLES_AMELIORATION] + [(r,) for r in REGLES_AMELIORATION]:
         resultats = match([JoueurAmeliore(avec=avec), JoueurPetit(**REGLAGES_RECHERCHE)], 10)
         assert resultats[0].parties == 20
+
+
+def test_heritage_multiple():
+    from joueurs import JoueurFinal, JoueurFinalAmeliore, JoueurPimcAmeliore
+    # sans règle, JoueurFinal+ doit donner exactement les mêmes résultats que JoueurFinal
+    a = match([JoueurFinalAmeliore(avec=()), JoueurPetit(**REGLAGES_RECHERCHE)], 15)
+    b = match([JoueurFinal(**REGLAGES_RECHERCHE), JoueurPetit(**REGLAGES_RECHERCHE)], 15)
+    assert a[0].victoires == b[0].victoires
+    # avec les règles, les deux joueurs jouent des parties complètes sans erreur
+    assert match([JoueurFinalAmeliore(), JoueurPetit(**REGLAGES_RECHERCHE)], 10)[0].parties == 20
+    assert match([JoueurPimcAmeliore(n_mondes=3, pioche_max=2),
+                  JoueurPetit(**REGLAGES_RECHERCHE)], 5)[0].parties == 10
