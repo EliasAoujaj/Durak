@@ -1,9 +1,10 @@
 """Fait s'affronter des stratégies et mesure leurs performances."""
 
 import math
+import time
 from dataclasses import dataclass
 
-from joueurs import Joueur, JoueurAleatoire
+from joueurs import Joueur, JoueurAleatoire, JoueurPetit
 from moteur import actions_legales, appliquer, fin_de_partie, joueur_actif, nouvelle_partie
 
 MAX_COUPS = 10_000   # garde-fou contre une partie qui ne se terminerait jamais
@@ -94,5 +95,10 @@ def afficher(resultats: list[Resultat]) -> None:
 
 
 if __name__ == "__main__":
-    resultats = match([JoueurAleatoire(1), JoueurAleatoire(2)], n_donnes=2000)
+    debut = time.perf_counter()
+    resultats = match([JoueurPetit(), JoueurAleatoire(1)], n_donnes=2000)
+    duree = time.perf_counter() - debut
     afficher(resultats)
+    n_parties = resultats[0].parties
+    print(f"{n_parties} parties en {duree:.1f} s, "
+          f"soit {duree / n_parties * 1000:.2f} ms par partie")
