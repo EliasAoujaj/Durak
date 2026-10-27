@@ -5,6 +5,7 @@ import random
 from cartes import Carte, Couleur
 from memoire import Memoire
 from moteur import Action, EtatPartie, TypeAction, cartes_triees, defenseur, non_battues
+from rapide import SolveurRapide
 from solveur import BudgetDepasse, Solveur
 
 
@@ -210,25 +211,30 @@ class JoueurFinal(JoueurCompteur):
     abandonnée, après avoir coûté beaucoup de temps.
     Ne fonctionne qu'à 2 joueurs (sinon : JoueurCompteur).
 
+    `rapide` choisit le solveur en entiers (rapide.py) plutôt que le solveur d'origine.
+
     Les compteurs `resolus`, `abandons` et `ignorees` comptent les décisions prises
     par le minimax, celles où le budget a été dépassé, et celles jugées trop grosses.
     """
 
-    def __init__(self, budget: int = 20_000, max_cartes: int = 12, **reglages):
+    def __init__(self, budget: int = 100_000, max_cartes: int = 16, rapide: bool = True,
+                 **reglages):
         super().__init__(**reglages)
         self.budget = budget
         self.max_cartes = max_cartes
+        # le solveur rapide (rapide.py) donne les mêmes résultats, en beaucoup plus vite
+        self.classe_solveur = SolveurRapide if rapide else Solveur
         self.solveur = None
         self.resolus = 0
         self.abandons = 0
         self.ignorees = 0
 
     def nom(self) -> str:
-        return "JoueurFinal"
+        return "JoueurFinal" if self.classe_solveur is SolveurRapide else "JoueurFinal(lent)"
 
     def debut_partie(self, moi: int, nb_joueurs: int) -> None:
         super().debut_partie(moi, nb_joueurs)   # la mémoire de JoueurCompteur
-        self.solveur = Solveur(moi, self.budget) if nb_joueurs == 2 else None
+        self.solveur = self.classe_solveur(moi, self.budget) if nb_joueurs == 2 else None
 
     def choisir(self, etat: EtatPartie, moi: int, actions: list[Action]) -> Action:
         preferee = super().choisir(etat, moi, actions)
@@ -280,7 +286,7 @@ class JoueurPimc(JoueurFinal):
     """
 
     def __init__(self, n_mondes: int = 10, pioche_max: int = 4, max_cartes_pimc: int = 18,
-                 budget_monde: int = 20_000, seed: int = 0, **reglages):
+                 budget_monde: int = 100_000, seed: int = 0, **reglages):
         super().__init__(**reglages)
         self.n_mondes = n_mondes
         self.pioche_max = pioche_max
@@ -313,7 +319,7 @@ class JoueurPimc(JoueurFinal):
         for _ in range(self.n_mondes):
             self.mondes_tentes += 1
             monde = self.memoire.tirer_monde(etat, self.rng)
-            solveur = Solveur(self.memoire.moi, self.budget_monde)   # un cache neuf par monde
+            solveur = self.classe_solveur(self.memoire.moi, self.budget_monde)   # cache neuf par monde
             try:
                 valeurs = solveur.valeurs_hybrides(monde, actions, self.politique)
             except BudgetDepasse:

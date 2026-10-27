@@ -9,9 +9,8 @@ N_DIAGNOSTIC = 10     # donnes par réglage pour le diagnostic (20 parties)
 N_MATCH = 1000        # donnes du vrai match (2000 parties)
 
 # réglages essayés : (pioche_max, n_mondes)
-ESSAIS = [(2, 10), (4, 10), (6, 10), (4, 20)]
-REGLAGE_MATCH = dict(pioche_max=4, n_mondes=10)   # à ajuster d'après le diagnostic
-
+ESSAIS = []   # diagnostic déjà fait
+REGLAGE_MATCH = dict(pioche_max=2, n_mondes=10)   # à ajuster d'après le diagnostic
 
 def diagnostic(pioche_max: int, n_mondes: int) -> None:
     pimc = JoueurPimc(pioche_max=pioche_max, n_mondes=n_mondes, **REGLAGES_RECHERCHE)
