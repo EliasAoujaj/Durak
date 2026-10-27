@@ -4,7 +4,8 @@ import random
 
 from cartes import Carte, Couleur
 from memoire import Memoire
-from moteur import Action, EtatPartie, TypeAction, defenseur, non_battues
+from moteur import Action, EtatPartie, TypeAction, cartes_triees, defenseur, non_battues
+from solveur import BudgetDepasse, Solveur
 
 
 class Joueur:
@@ -196,3 +197,65 @@ class JoueurCompteur(JoueurPetit):
         probas = [self.memoire.proba_imbattable(etat, c, adversaire) for c in action.cartes_jouees]
         reduction = self.bonus_imbattable * sum(probas) / len(probas)
         return cout - reduction
+
+
+class JoueurFinal(JoueurCompteur):
+    """JoueurCompteur qui joue parfaitement la fin de partie.
+
+    Tant que la pioche n'est pas vide, il joue comme JoueurCompteur. Ensuite, il
+    reconstitue la main adverse grâce à sa mémoire et la résout avec le minimax.
+    Si la recherche dépasse `budget` positions pour une décision, il se rabat
+    sur son heuristique. Il ne tente même pas la recherche quand les deux mains
+    réunies comptent plus de `max_cartes` cartes : elle serait presque toujours
+    abandonnée, après avoir coûté beaucoup de temps.
+    Ne fonctionne qu'à 2 joueurs (sinon : JoueurCompteur).
+
+    Les compteurs `resolus`, `abandons` et `ignorees` comptent les décisions prises
+    par le minimax, celles où le budget a été dépassé, et celles jugées trop grosses.
+    """
+
+    def __init__(self, budget: int = 20_000, max_cartes: int = 12, **reglages):
+        super().__init__(**reglages)
+        self.budget = budget
+        self.max_cartes = max_cartes
+        self.solveur = None
+        self.resolus = 0
+        self.abandons = 0
+        self.ignorees = 0
+
+    def nom(self) -> str:
+        return "JoueurFinal"
+
+    def debut_partie(self, moi: int, nb_joueurs: int) -> None:
+        super().debut_partie(moi, nb_joueurs)   # la mémoire de JoueurCompteur
+        self.solveur = Solveur(moi, self.budget) if nb_joueurs == 2 else None
+
+    def choisir(self, etat: EtatPartie, moi: int, actions: list[Action]) -> Action:
+        preferee = super().choisir(etat, moi, actions)
+        if etat.pioche or self.solveur is None or len(actions) == 1:
+            return preferee
+        if sum(len(main) for main in etat.mains) > self.max_cartes:   # tailles publiques
+            self.ignorees += 1
+            return preferee
+        try:
+            complet = self.reconstituer(etat, moi)
+            action = self.solveur.meilleure_action(complet, actions, preferee)
+        except BudgetDepasse:
+            self.abandons += 1
+            return preferee
+        self.resolus += 1
+        return action
+
+    def reconstituer(self, etat: EtatPartie, moi: int) -> EtatPartie:
+        """L'état complet tel que le joueur le connaît : sa main, et la main adverse
+        déduite de la mémoire (sans jamais lire etat.mains de l'adversaire)."""
+        adversaire = next(j for j in range(len(etat.mains)) if j != moi)
+        main_adverse = self.memoire.inconnues(etat) | self.memoire.connues[adversaire]
+        mains = [[], []]
+        mains[moi] = list(etat.mains[moi])
+        mains[adversaire] = cartes_triees(main_adverse)
+        # contrôle : seule la taille de la main adverse est lue, et elle est publique
+        assert len(mains[adversaire]) == len(etat.mains[adversaire]), "mémoire incohérente"
+        return EtatPartie(mains=mains, pioche=[], atout=etat.atout, table=list(etat.table),
+                          defausse=[], attaquant=etat.attaquant,   # défausse inutile ici
+                          defenseur_prend=etat.defenseur_prend, classement=list(etat.classement))

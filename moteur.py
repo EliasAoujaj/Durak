@@ -145,11 +145,15 @@ def actions_legales(etat):
     else:
         return actions_defenseur(etat)
 
+def cartes_triees(cartes) -> list[Carte]:
+    """Les cartes dans un ordre fixe : l'ordre d'un frozenset varie d'une exécution à l'autre."""
+    return sorted(cartes, key=lambda c: (c.valeur, c.couleur.value))
+
 def appliquer(etat: EtatPartie, action: Action) -> None:
     """Joue l'action et modifie l'état sur place."""
     if action.type_action == TypeAction.ATTAQUER:
         main = etat.mains[etat.attaquant]
-        for carte in action.cartes_jouees:
+        for carte in cartes_triees(action.cartes_jouees):
             main.remove(carte)
             etat.table.append((carte, None))
 
@@ -162,7 +166,7 @@ def appliquer(etat: EtatPartie, action: Action) -> None:
     elif action.type_action == TypeAction.TRANSFERER:
         ancien_defenseur = defenseur(etat)    # calculé avant de changer les rôles
         main = etat.mains[ancien_defenseur]
-        for carte in action.cartes_jouees:
+        for carte in cartes_triees(action.cartes_jouees):
             main.remove(carte)
             etat.table.append((carte, None))
         etat.attaquant = ancien_defenseur
