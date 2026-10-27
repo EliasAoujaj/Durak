@@ -10,6 +10,7 @@ from moteur import (Action, EtatPartie, TypeAction, actions_legales, appliquer, 
 
 GAGNE, NUL, PERDU = 1, 0, -1
 PROFONDEUR_MAX = 500   # au-delà, on abandonne (et on évite la limite de récursion de Python)
+COUPS_MAX_SIMULATION = 1_000   # garde-fou contre les boucles pendant une simulation
 
 
 class BudgetDepasse(Exception):
@@ -52,11 +53,12 @@ def cle_position(etat: EtatPartie) -> tuple:
     """Une clé de dictionnaire qui identifie la position.
 
     Elle ne retient que ce qui compte pour la suite de la partie : les mains,
-    la table (sans ordre), qui attaque et si le défenseur a pris. La défausse
-    n'influence plus rien, et l'atout ne change pas pendant une partie.
+    la table (sans ordre), la pioche (dans l'ordre : il décide qui reçoit quoi),
+    qui attaque et si le défenseur a pris. La défausse n'influence plus rien,
+    et l'atout ne change pas pendant une partie.
     """
     return (frozenset(etat.mains[0]), frozenset(etat.mains[1]), frozenset(etat.table),
-            etat.attaquant, etat.defenseur_prend)
+            tuple(etat.pioche), etat.attaquant, etat.defenseur_prend)
 
 
 class Solveur:
@@ -107,6 +109,52 @@ class Solveur:
                 if v == GAGNE:
                     break   # impossible de faire mieux
         return meilleure
+
+    def valeurs(self, etat: EtatPartie, actions: list[Action]) -> list[int]:
+        """La valeur exacte de chacun des coups (dans le même ordre que `actions`).
+        Contrairement à meilleure_action, on ne s'arrête pas au premier coup gagnant :
+        le PIMC a besoin de la valeur de tous les coups dans chaque monde."""
+        self.noeuds = 0
+        self.chemin = {cle_position(etat)}
+        resultat = []
+        for action in actions:
+            suivant = copier(etat)
+            appliquer(suivant, action)
+            resultat.append(self._valeur(suivant))
+        return resultat
+
+    def valeurs_hybrides(self, etat: EtatPartie, actions: list[Action], politique) -> list[int]:
+        """Comme valeurs, mais pour une position où la pioche n'est pas vide.
+
+        Explorer exactement tous les coups jusqu'à ce que la pioche se vide coûte trop cher.
+        Après chaque coup, on laisse donc `politique` (un joueur heuristique, qui doit avoir
+        une méthode choisir) jouer pour les deux camps jusqu'à ce que la pioche soit vide,
+        puis on résout exactement la fin de partie. Le cache est partagé entre les coups :
+        plusieurs d'entre eux mènent souvent aux mêmes fins de partie.
+        """
+        resultat = []
+        for action in actions:
+            suivant = copier(etat)
+            appliquer(suivant, action)
+            resultat.append(self.valeur_hybride(suivant, politique))
+        return resultat
+
+    def valeur_hybride(self, etat: EtatPartie, politique) -> int:
+        """Simulation heuristique jusqu'à ce que la pioche soit vide, puis minimax exact."""
+        etat = copier(etat)
+        for _ in range(COUPS_MAX_SIMULATION):
+            terminee, classement = fin_de_partie(etat)
+            if terminee:
+                return GAGNE if classement[0] == self.moi else PERDU
+            if not etat.pioche:
+                break
+            actif = joueur_actif(etat)
+            appliquer(etat, politique.choisir(etat, actif, actions_legales(etat)))
+        else:
+            return NUL   # la simulation tourne en rond
+        self.noeuds = 0
+        self.chemin = set()
+        return self._valeur(etat)
 
     def _valeur(self, etat: EtatPartie) -> int:
         terminee, classement = fin_de_partie(etat)

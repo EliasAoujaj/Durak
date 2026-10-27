@@ -1,9 +1,10 @@
 """Ce qu'un joueur sait de la partie, à partir de l'information publique uniquement."""
 
+import random
 from math import comb
 
 from cartes import Carte, bat, nouveau_paquet
-from moteur import Action, EtatPartie, TypeAction, defenseur
+from moteur import Action, EtatPartie, TypeAction, cartes_triees, defenseur
 
 PAQUET = frozenset(nouveau_paquet())
 
@@ -70,3 +71,30 @@ class Memoire:
         b = sum(bat(carte, c, etat.atout) for c in cachees)
         k = min(self.nb_inconnues_en_main(etat, adversaire), n)
         return comb(n - b, k) / comb(n, k)
+
+    def tirer_monde(self, etat: EtatPartie, rng: random.Random) -> EtatPartie:
+        """Un état complet tiré au hasard parmi ceux compatibles avec ce qu'on sait (2 joueurs).
+
+        Les cartes cachées sont mélangées puis distribuées : d'abord de quoi compléter
+        la main adverse (dont on connaît la taille et une partie des cartes), le reste
+        forme la pioche, dans un ordre aléatoire, avec la carte du dessous à sa place.
+        """
+        assert len(etat.mains) == 2, "le tirage de mondes ne gère que 2 joueurs"
+        adversaire = 1 - self.moi
+        # tri avant mélange : l'ordre d'un set varie d'une exécution à l'autre,
+        # on ne serait plus reproductible
+        cachees = cartes_triees(self.cachees(etat))
+        rng.shuffle(cachees)
+        k = self.nb_inconnues_en_main(etat, adversaire)
+
+        mains = [[], []]
+        mains[self.moi] = list(etat.mains[self.moi])
+        mains[adversaire] = cartes_triees(self.connues[adversaire]) + cachees[:k]
+        # on pioche avec pop(), donc par la fin : la carte du dessous reste en position 0
+        pioche = [etat.pioche[0]] + cachees[k:] if etat.pioche else []
+
+        assert len(mains[adversaire]) == len(etat.mains[adversaire]), "mémoire incohérente"
+        assert len(pioche) == len(etat.pioche), "mémoire incohérente"
+        return EtatPartie(mains=mains, pioche=pioche, atout=etat.atout, table=list(etat.table),
+                          defausse=[], attaquant=etat.attaquant,
+                          defenseur_prend=etat.defenseur_prend, classement=list(etat.classement))

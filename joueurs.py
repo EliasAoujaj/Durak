@@ -259,3 +259,75 @@ class JoueurFinal(JoueurCompteur):
         return EtatPartie(mains=mains, pioche=[], atout=etat.atout, table=list(etat.table),
                           defausse=[], attaquant=etat.attaquant,   # défausse inutile ici
                           defenseur_prend=etat.defenseur_prend, classement=list(etat.classement))
+
+
+class JoueurPimc(JoueurFinal):
+    """JoueurFinal qui raisonne aussi avant que la pioche soit vide, par PIMC
+    (Perfect Information Monte Carlo).
+
+    Quand la pioche a entre 1 et `pioche_max` cartes, à chaque décision :
+    1. il tire `n_mondes` répartitions des cartes cachées compatibles avec sa mémoire ;
+    2. dans chaque monde, il évalue chacun de ses coups : une simulation par l'heuristique
+       (pour les deux camps) jusqu'à ce que la pioche soit vide, puis le minimax exact ;
+    3. il joue le coup au meilleur total (à égalité, celui de l'heuristique).
+
+    Il ne le fait que si les mains et la pioche réunies comptent au plus `max_cartes_pimc`
+    cartes. Un monde dont une fin de partie dépasse `budget_monde` positions est ignoré.
+    La pioche vide, il joue exactement comme JoueurFinal. Avant, comme JoueurCompteur.
+
+    Compteurs : `pimc_decisions` (décisions prises par PIMC), `pimc_abandons` (aucun
+    monde résolu : heuristique), `mondes_tentes` et `mondes_abandonnes`.
+    """
+
+    def __init__(self, n_mondes: int = 10, pioche_max: int = 4, max_cartes_pimc: int = 18,
+                 budget_monde: int = 20_000, seed: int = 0, **reglages):
+        super().__init__(**reglages)
+        self.n_mondes = n_mondes
+        self.pioche_max = pioche_max
+        self.max_cartes_pimc = max_cartes_pimc
+        self.budget_monde = budget_monde
+        self.rng = random.Random(seed)
+        # l'heuristique qui joue les simulations : JoueurPetit avec les mêmes réglages
+        noms_petit = JoueurPetit().reglages().keys()
+        self.politique = JoueurPetit(**{k: v for k, v in reglages.items() if k in noms_petit})
+        self.pimc_decisions = 0
+        self.pimc_abandons = 0
+        self.mondes_tentes = 0
+        self.mondes_abandonnes = 0
+
+    def nom(self) -> str:
+        return "JoueurPimc"
+
+    def choisir(self, etat: EtatPartie, moi: int, actions: list[Action]) -> Action:
+        # pioche vide : minimax exact de JoueurFinal ; sinon : l'heuristique du compteur
+        preferee = super().choisir(etat, moi, actions)
+        taille = sum(len(main) for main in etat.mains) + len(etat.pioche)   # tailles publiques
+        if (not etat.pioche or len(etat.pioche) > self.pioche_max or self.solveur is None
+                or len(actions) == 1 or taille > self.max_cartes_pimc):
+            return preferee
+        return self.choisir_pimc(etat, actions, preferee)
+
+    def choisir_pimc(self, etat: EtatPartie, actions: list[Action], preferee: Action) -> Action:
+        scores = [0] * len(actions)
+        mondes_resolus = 0
+        for _ in range(self.n_mondes):
+            self.mondes_tentes += 1
+            monde = self.memoire.tirer_monde(etat, self.rng)
+            solveur = Solveur(self.memoire.moi, self.budget_monde)   # un cache neuf par monde
+            try:
+                valeurs = solveur.valeurs_hybrides(monde, actions, self.politique)
+            except BudgetDepasse:
+                self.mondes_abandonnes += 1
+                continue
+            mondes_resolus += 1
+            for i, v in enumerate(valeurs):
+                scores[i] += v   # +1 par monde gagné, -1 par monde perdu
+
+        if mondes_resolus == 0:
+            self.pimc_abandons += 1
+            return preferee
+        self.pimc_decisions += 1
+        meilleur_score = max(scores)
+        if scores[actions.index(preferee)] == meilleur_score:
+            return preferee   # à égalité, on garde le choix de l'heuristique
+        return actions[scores.index(meilleur_score)]
