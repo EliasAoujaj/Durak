@@ -2,7 +2,7 @@
 
 import random
 
-from cartes import Carte, Couleur
+from cartes import Carte, Couleur, bat
 from memoire import Memoire
 from moteur import Action, EtatPartie, TypeAction, cartes_triees, defenseur, non_battues
 from rapide import SolveurRapide
@@ -337,3 +337,275 @@ class JoueurPimc(JoueurFinal):
         if scores[actions.index(preferee)] == meilleur_score:
             return preferee   # à égalité, on garde le choix de l'heuristique
         return actions[scores.index(meilleur_score)]
+
+
+REGLES_SAGE = ("ouverture_forte", "presque_vide", "prendre_avant_fin", "planification",
+               "simples", "transfert")
+
+
+class JoueurSage(JoueurPetit):
+    """Une heuristique qui applique les leçons tirées de l'analyse des experts.
+
+    Elle n'utilise ni comptage ni minimax : seulement sa main, la table, l'atout,
+    la taille de la pioche et le nombre de cartes de l'adversaire. Tout ce qu'elle
+    fait, un joueur humain peut donc le faire de tête.
+
+    Les règles (chacune peut être désactivée avec `sans`, pour mesurer son apport) :
+    - les atouts gardent toujours leur valeur, même en fin de partie (pas de bonus réduit) ;
+    - "ouverture_forte" : quand la pioche est presque vide, ouvrir avec une carte ordinaire
+      forte (au plus `carte_forte_max`), pour obliger l'adversaire à entamer ses atouts ;
+    - "presque_vide" : pioche vide et adversaire à `presque_vide` cartes ou moins : ouvrir
+      avec sa carte la plus forte, pour l'obliger à prendre ;
+    - "prendre_avant_fin" : pioche presque vide, prendre plutôt que se défendre avec un atout ;
+    - "planification" : en défense, prévoir une carte pour CHAQUE attaque avant de répondre,
+      en réservant les atouts à celles que seul un atout peut battre ;
+    - "simples" : à coût égal, ouvrir avec une seule carte plutôt qu'avec une paire ;
+    - "transfert" : transférer dès que c'est possible sans atout.
+    Les ajouts en attaque n'utilisent jamais d'atout, et s'arrêtent plus tôt près de la fin.
+    """
+
+    def __init__(self, bonus_atout: int = 20, pioche_proche: int = 4, seuil_ajout: int = 12,
+                 seuil_ajout_fin: int = 10, seuil_defense: int = 30, presque_vide: int = 2,
+                 carte_forte_max: int = 13, sans: tuple = ()):
+        super().__init__(bonus_atout=bonus_atout, seuil_ajout=seuil_ajout,
+                         seuil_defense=seuil_defense)
+        inconnues = set(sans) - set(REGLES_SAGE)
+        assert not inconnues, f"règles inconnues : {inconnues}"
+        self.pioche_proche = pioche_proche
+        self.seuil_ajout_fin = seuil_ajout_fin
+        self.presque_vide = presque_vide
+        self.carte_forte_max = carte_forte_max
+        self.sans = frozenset(sans)
+
+    def nom(self) -> str:
+        return "JoueurSage" + "".join(f" -{r}" for r in sorted(self.sans))
+
+    def avec(self, regle: str) -> bool:
+        return regle not in self.sans
+
+    # --- outils ---
+
+    def cout_carte(self, carte: Carte, etat: EtatPartie) -> int:
+        """Un atout garde toujours son prix, même en fin de partie."""
+        return carte.valeur + (self.bonus_atout if carte.couleur == etat.atout else 0)
+
+    def phase(self, etat: EtatPartie) -> str:
+        if not etat.pioche:
+            return "fin"
+        if len(etat.pioche) <= self.pioche_proche:
+            return "proche"
+        return "milieu"
+
+    # --- attaque ---
+
+    def choisir_attaque(self, etat: EtatPartie, actions: list[Action]) -> Action | None:
+        cout = lambda a: self.cout_moyen(a, etat)
+        phase = self.phase(etat)
+        attaques = de_type(actions, TypeAction.ATTAQUER)
+
+        if not etat.table:
+            simples = [a for a in attaques if len(a.cartes_jouees) == 1]
+            n_adversaire = len(etat.mains[defenseur(etat)])   # taille publique
+            if (self.avec("presque_vide") and phase == "fin" and simples
+                    and n_adversaire <= self.presque_vide):
+                return max(simples, key=cout)   # la plus forte : il devra sans doute prendre
+            if self.avec("ouverture_forte") and phase == "proche":
+                fortes = [a for a in simples if not contient_atout(a, etat.atout)
+                          and next(iter(a.cartes_jouees)).valeur <= self.carte_forte_max]
+                if fortes:
+                    return max(fortes, key=cout)
+            # sinon : la moins chère (les atouts, toujours chers, ne sortent qu'en dernier)
+            nb = (lambda a: len(a.cartes_jouees)) if self.avec("simples") else (lambda a: -len(a.cartes_jouees))
+            return min(attaques, key=lambda a: (cout(a), nb(a)), default=None)
+
+        # ajout en cours d'attaque : jamais d'atout, et moins généreux près de la fin
+        seuil = self.seuil_ajout if phase == "milieu" else self.seuil_ajout_fin
+        ajouts = [a for a in attaques if not contient_atout(a, etat.atout) and cout(a) <= seuil]
+        if ajouts:
+            return min(ajouts, key=cout)
+        passer = de_type(actions, TypeAction.PASSER)
+        return passer[0] if passer else None
+
+    # --- défense ---
+
+    def choisir_defense(self, etat: EtatPartie, actions: list[Action]) -> Action | None:
+        cout = lambda a: self.cout_moyen(a, etat)
+        prendre = Action(TypeAction.PRENDRE)
+        phase = self.phase(etat)
+
+        transferts = de_type(actions, TypeAction.TRANSFERER)
+        if self.avec("transfert"):
+            transferts = [a for a in transferts if not contient_atout(a, etat.atout)]
+        else:
+            transferts = [a for a in transferts if cout(a) <= 10]   # comme JoueurPetit réglé
+        if transferts:
+            return min(transferts, key=cout)
+
+        main = etat.mains[defenseur(etat)]
+        cibles = non_battues(etat)
+        plan = (self.plan_defense(etat, main, cibles) if self.avec("planification")
+                else self.plan_glouton(etat, main, cibles))
+        if plan is None:
+            return prendre   # impossible de tout battre : inutile de dépenser des cartes
+
+        cartes = [carte for _, carte in plan]
+        if phase != "fin":
+            if (self.avec("prendre_avant_fin") and phase == "proche"
+                    and any(c.couleur == etat.atout for c in cartes)):
+                return prendre   # garder ses atouts pour la fin de partie
+            if max(self.cout_carte(c, etat) for c in cartes) > self.seuil_defense:
+                return prendre
+        cible, carte = plan[0]
+        return Action(TypeAction.DEFENDRE, frozenset({carte}), cible)
+
+    def plan_defense(self, etat: EtatPartie, main: list[Carte],
+                     cibles: list[Carte]) -> list[tuple[Carte, Carte]] | None:
+        """La façon la moins coûteuse de battre TOUTES les attaques, une carte par attaque,
+        ou None si c'est impossible. Recherche exhaustive avec élagage (séparation et
+        évaluation) : les attaques les plus difficiles à battre sont traitées en premier."""
+        candidats = {c: sorted((d for d in main if bat(c, d, etat.atout)),
+                               key=lambda d: self.cout_carte(d, etat)) for c in cibles}
+        ordre = sorted(cibles, key=lambda c: len(candidats[c]))
+        meilleur = [None, float("inf")]   # [plan, coût]
+
+        def chercher(i: int, utilisees: set, plan: list, total: int) -> None:
+            if total >= meilleur[1]:
+                return   # élagage : on ne fera pas mieux que le meilleur plan connu
+            if i == len(ordre):
+                meilleur[0], meilleur[1] = list(plan), total
+                return
+            cible = ordre[i]
+            for carte in candidats[cible]:
+                if carte not in utilisees:
+                    utilisees.add(carte)
+                    plan.append((cible, carte))
+                    chercher(i + 1, utilisees, plan, total + self.cout_carte(carte, etat))
+                    plan.pop()
+                    utilisees.remove(carte)
+
+        chercher(0, set(), [], 0)
+        return meilleur[0]
+
+    def plan_glouton(self, etat: EtatPartie, main: list[Carte],
+                     cibles: list[Carte]) -> list[tuple[Carte, Carte]] | None:
+        """Sans planification : chaque attaque prend la carte la moins chère qui reste."""
+        plan, utilisees = [], set()
+        for cible in cibles:
+            possibles = [d for d in main if d not in utilisees and bat(cible, d, etat.atout)]
+            if not possibles:
+                return None
+            carte = min(possibles, key=lambda d: self.cout_carte(d, etat))
+            utilisees.add(carte)
+            plan.append((cible, carte))
+        return plan
+
+
+REGLES_AMELIORATION = ("planification", "transfert_libre", "pas_atout_ouverture_fin",
+                       "presque_vide", "pas_atout_ajout_fin", "ouverture_forte", "simples")
+
+
+class JoueurAmeliore(JoueurPetit):
+    """JoueurPetit avec les réglages de la recherche, auquel on AJOUTE certaines leçons
+    de l'analyse, choisies avec `avec`. Sans aucune règle, il joue exactement comme
+    JoueurPetit(**REGLAGES_RECHERCHE) : chaque règle ne modifie que sa propre situation.
+
+    Les règles :
+    - "planification" : en défense, prévoir une carte pour chaque attaque avant de répondre ;
+    - "transfert_libre" : transférer avec n'importe quelles cartes qui ne sont pas des atouts ;
+    - "pas_atout_ouverture_fin" : pioche vide, ne pas ouvrir avec un atout si on peut l'éviter ;
+    - "presque_vide" : pioche vide et adversaire à `presque_vide` cartes ou moins,
+      ouvrir avec sa carte la plus forte ;
+    - "pas_atout_ajout_fin" : près de la fin (pioche à `pioche_proche` cartes ou moins),
+      ne jamais ajouter d'atout en attaque ;
+    - "ouverture_forte" : près de la fin (pioche non vide), ouvrir avec la carte ordinaire
+      la plus forte jusqu'à `carte_forte_max` ;
+    - "simples" : à coût égal, ouvrir avec une seule carte plutôt qu'avec plusieurs.
+    """
+
+    plan_defense = JoueurSage.plan_defense   # même recherche du meilleur plan de défense
+
+    def __init__(self, avec: tuple = (), pioche_proche: int = 4, presque_vide: int = 2,
+                 carte_forte_max: int = 13, **reglages):
+        super().__init__(**(reglages or REGLAGES_RECHERCHE))
+        inconnues = set(avec) - set(REGLES_AMELIORATION)
+        assert not inconnues, f"règles inconnues : {inconnues}"
+        self.avec = frozenset(avec)
+        self.pioche_proche = pioche_proche
+        self.presque_vide = presque_vide
+        self.carte_forte_max = carte_forte_max
+
+    def nom(self) -> str:
+        return "Ameliore[" + ", ".join(r for r in REGLES_AMELIORATION if r in self.avec) + "]"
+
+    def phase(self, etat: EtatPartie) -> str:
+        if not etat.pioche:
+            return "fin"
+        return "proche" if len(etat.pioche) <= self.pioche_proche else "milieu"
+
+    def choisir_attaque(self, etat: EtatPartie, actions: list[Action]) -> Action | None:
+        cout = lambda a: self.cout_attaque(a, etat)
+        phase = self.phase(etat)
+        attaques = de_type(actions, TypeAction.ATTAQUER)
+
+        if not etat.table:
+            simples = [a for a in attaques if len(a.cartes_jouees) == 1]
+            n_adversaire = len(etat.mains[defenseur(etat)])   # taille publique
+            if ("presque_vide" in self.avec and phase == "fin" and simples
+                    and n_adversaire <= self.presque_vide):
+                return max(simples, key=cout)
+            if "ouverture_forte" in self.avec and phase == "proche":
+                fortes = [a for a in simples if not contient_atout(a, etat.atout)
+                          and next(iter(a.cartes_jouees)).valeur <= self.carte_forte_max]
+                if fortes:
+                    return max(fortes, key=cout)
+            candidates = attaques
+            if "pas_atout_ouverture_fin" in self.avec and phase == "fin":
+                sans_atout = [a for a in attaques if not contient_atout(a, etat.atout)]
+                candidates = sans_atout or attaques
+            if "simples" in self.avec:
+                cle = lambda a: (cout(a), len(a.cartes_jouees))
+            else:
+                cle = lambda a: (cout(a), -len(a.cartes_jouees))   # comme JoueurPetit
+            return min(candidates, key=cle, default=None)
+
+        ajouts = [a for a in attaques if cout(a) <= self.seuil_ajout]
+        if "pas_atout_ajout_fin" in self.avec and phase != "milieu":
+            ajouts = [a for a in ajouts if not contient_atout(a, etat.atout)]
+        if ajouts:
+            return min(ajouts, key=cout)
+        passer = de_type(actions, TypeAction.PASSER)
+        return passer[0] if passer else None
+
+    def choisir_defense(self, etat: EtatPartie, actions: list[Action]) -> Action | None:
+        if not ({"planification", "transfert_libre"} & self.avec):
+            return super().choisir_defense(etat, actions)   # rien ne change en défense
+        cout = lambda a: self.cout_moyen(a, etat)
+        prendre = Action(TypeAction.PRENDRE)
+
+        transferts = de_type(actions, TypeAction.TRANSFERER)
+        if "transfert_libre" in self.avec:
+            transferts = [a for a in transferts if not contient_atout(a, etat.atout)]
+        else:
+            transferts = [a for a in transferts if cout(a) <= self.seuil_transfert]
+        if transferts:
+            return min(transferts, key=cout)
+
+        defenses = de_type(actions, TypeAction.DEFENDRE)
+        cibles_couvertes = {a.cible for a in defenses}
+        if any(att not in cibles_couvertes for att in non_battues(etat)):
+            return prendre
+
+        if "planification" in self.avec:
+            plan = self.plan_defense(etat, etat.mains[defenseur(etat)], non_battues(etat))
+            if plan is None:
+                return prendre   # chaque attaque est battable seule, mais pas toutes ensemble
+            cible, carte = plan[0]
+            meilleure = Action(TypeAction.DEFENDRE, frozenset({carte}), cible)
+        else:
+            meilleure = min(defenses, key=cout, default=None)
+
+        # même règle que JoueurPetit : hors fin de partie, une défense trop chère, on prend
+        if (meilleure is not None and not self.en_fin_de_partie(etat)
+                and cout(meilleure) > self.seuil_defense):
+            return prendre
+        return meilleure

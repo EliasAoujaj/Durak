@@ -1,0 +1,233 @@
+(analyse de fin de partie : 128 s)
+
+==============================================================================
+1. FIN DE PARTIE (pioche vide) : les erreurs prouvées de l'heuristique
+==============================================================================
+Décisions analysées : 17776   dont erreurs : 913 (5.1%)
+
+Par situation :
+  défense              7645 décisions   erreurs :   256 (3.3%)
+  attaque initiale     6287 décisions   erreurs :   547 (8.7%)
+  ajout ou passer      3844 décisions   erreurs :   110 (2.9%)
+
+Les 12 cas les plus fréquents (heuristique → expert) :
+
+• attaque initiale : attaquer → attaquer (carte plus faible)   —   270 cas, 29.6% des erreurs
+    en moyenne : 4.9 cartes en main contre 5.1 chez l'adversaire, 2.2 atout(s) en main
+    l'heuristique joue un atout dans 96% des cas, l'expert dans 4%
+    ex. atout carreau, pioche 0 | moi : 10♦ D♦ A♦ 10♥ D♥ A♥ A♠ | adversaire (5 cartes, connues : 8♦ V♦ R♦ R♥ R♠) | table : (vide)
+        heuristique : Attaquer avec A♦   →   expert : Attaquer avec D♥
+    ex. atout trefle, pioche 0 | moi : A♣ V♦ D♦ A♦ D♥ A♥ | adversaire (2 cartes, connues : 9♣ A♠) | table : (vide)
+        heuristique : Attaquer avec A♣   →   expert : Attaquer avec D♦
+    ex. atout trefle, pioche 0 | moi : A♣ V♦ A♦ A♥ | adversaire (4 cartes, connues : 9♣ D♦ D♥ A♠) | table : (vide)
+        heuristique : Attaquer avec A♣   →   expert : Attaquer avec A♦
+
+• attaque initiale : attaquer → attaquer (carte plus forte)   —   197 cas, 21.6% des erreurs
+    en moyenne : 4.5 cartes en main contre 4.2 chez l'adversaire, 1.9 atout(s) en main
+    l'heuristique joue un atout dans 13% des cas, l'expert dans 24%
+    ex. atout coeur, pioche 0 | moi : A♣ 7♦ A♦ 10♥ V♥ A♥ | adversaire (6 cartes, connues : R♦ 6♥ D♥ R♥ V♠ D♠) | table : (vide)
+        heuristique : Attaquer avec 7♦   →   expert : Attaquer avec A♣
+    ex. atout coeur, pioche 0 | moi : 8♥ V♥ R♥ A♥ V♠ | adversaire (1 cartes, connues : V♣) | table : (vide)
+        heuristique : Attaquer avec V♠   →   expert : Attaquer avec 8♥
+    ex. atout trefle, pioche 0 | moi : V♣ R♣ A♣ R♦ A♦ A♥ 7♠ | adversaire (3 cartes, connues : D♣ D♥ D♠) | table : (vide)
+        heuristique : Attaquer avec 7♠   →   expert : Attaquer avec R♦
+
+• défense : battre → battre (carte plus forte)   —   166 cas, 18.2% des erreurs
+    en moyenne : 5.6 cartes en main contre 3.0 chez l'adversaire, 2.6 atout(s) en main
+    l'heuristique joue un atout dans 37% des cas, l'expert dans 79%
+    ex. atout carreau, pioche 0 | moi : 6♦ V♦ D♦ D♥ R♥ | adversaire (9 cartes, connues : R♣ A♣ 8♦ R♦ A♦ 9♥ 9♠ R♠ A♠) | table : 7♥/—  7♣/—
+        heuristique : Battre 7♥ avec 6♦   →   expert : Battre 7♥ avec D♥
+    ex. atout coeur, pioche 0 | moi : 8♥ V♥ R♥ A♥ V♠ R♠ | adversaire (1 cartes, connues : V♣) | table : 8♠/—
+        heuristique : Battre 8♠ avec V♠   →   expert : Battre 8♠ avec R♠
+    ex. atout carreau, pioche 0 | moi : V♣ A♦ R♠ | adversaire (2 cartes, connues : R♦ R♥) | table : V♠/7♦  V♦/D♦  D♥/9♦  D♠/—
+        heuristique : Battre D♠ avec R♠   →   expert : Battre D♠ avec A♦
+
+• ajout ou passer : attaquer → passer   —   77 cas, 8.4% des erreurs
+    en moyenne : 4.3 cartes en main contre 4.1 chez l'adversaire, 2.2 atout(s) en main
+    l'heuristique joue un atout dans 64% des cas, l'expert dans 0%
+    ex. atout coeur, pioche 0 | moi : 7♦ 10♥ V♥ A♥ | adversaire (4 cartes, connues : R♦ R♥ V♠ D♠) | table : A♣/6♥  A♦/D♥
+        heuristique : Attaquer avec A♥   →   expert : Passer
+    ex. atout coeur, pioche 0 | moi : A♦ 8♥ R♥ | adversaire (5 cartes, connues : 7♣ 10♥ D♥ A♥ 10♠) | table : R♣/7♥
+        heuristique : Attaquer avec R♥   →   expert : Passer
+    ex. atout pique, pioche 0 | moi : 9♣ A♣ A♦ A♥ A♠ | adversaire (3 cartes, connues : V♣ R♣ R♠) | table : 9♦/V♠  9♥/D♠
+        heuristique : Attaquer avec 9♣   →   expert : Passer
+
+• attaque initiale : attaquer → attaquer (moins de cartes)   —   54 cas, 5.9% des erreurs
+    en moyenne : 6.1 cartes en main contre 4.2 chez l'adversaire, 2.0 atout(s) en main
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 15%
+    ex. atout pique, pioche 0 | moi : 8♣ 8♥ 10♥ 10♠ | adversaire (4 cartes, connues : R♣ 8♠ V♠ D♠) | table : (vide)
+        heuristique : Attaquer avec 8♣ 8♥   →   expert : Attaquer avec 10♥
+    ex. atout pique, pioche 0 | moi : 9♣ A♣ 9♦ A♦ 9♥ A♥ A♠ | adversaire (5 cartes, connues : V♣ R♣ V♠ D♠ R♠) | table : (vide)
+        heuristique : Attaquer avec 9♣ 9♦ 9♥   →   expert : Attaquer avec 9♦
+    ex. atout pique, pioche 0 | moi : D♣ A♣ 7♦ D♦ A♦ 7♥ D♠ A♠ | adversaire (4 cartes, connues : 9♣ 9♦ 10♠ R♠) | table : (vide)
+        heuristique : Attaquer avec 7♦ 7♥   →   expert : Attaquer avec D♣
+
+• défense : battre → prendre   —   27 cas, 3.0% des erreurs
+    en moyenne : 4.0 cartes en main contre 3.6 chez l'adversaire, 1.7 atout(s) en main
+    l'heuristique joue un atout dans 100% des cas, l'expert dans 0%
+    ex. atout pique, pioche 0 | moi : 9♥ A♥ R♠ A♠ | adversaire (5 cartes, connues : R♣ A♣ R♦ A♦ R♥) | table : 8♠/D♠  8♣/—
+        heuristique : Battre 8♣ avec R♠   →   expert : Prendre
+    ex. atout coeur, pioche 0 | moi : V♣ R♣ V♥ A♥ | adversaire (3 cartes, connues : D♥ V♠ A♠) | table : 9♦/R♦  R♥/—
+        heuristique : Battre R♥ avec A♥   →   expert : Prendre
+    ex. atout trefle, pioche 0 | moi : R♣ R♥ A♥ | adversaire (6 cartes, connues : V♣ A♣ 10♦ V♦ V♠ A♠) | table : 9♥/7♣  9♣/D♣  D♠/—
+        heuristique : Battre D♠ avec R♣   →   expert : Prendre
+
+• attaque initiale : attaquer → attaquer (plus de cartes)   —   23 cas, 2.5% des erreurs
+    en moyenne : 3.9 cartes en main contre 3.0 chez l'adversaire, 1.3 atout(s) en main
+    l'heuristique joue un atout dans 65% des cas, l'expert dans 52%
+    ex. atout trefle, pioche 0 | moi : A♣ A♦ A♥ | adversaire (3 cartes, connues : R♣ R♥ A♠) | table : (vide)
+        heuristique : Attaquer avec A♣   →   expert : Attaquer avec A♦ A♥
+    ex. atout trefle, pioche 0 | moi : A♣ 8♥ A♥ | adversaire (3 cartes, connues : R♣ A♦ R♥) | table : (vide)
+        heuristique : Attaquer avec 8♥   →   expert : Attaquer avec A♣ A♥
+    ex. atout coeur, pioche 0 | moi : A♣ A♥ A♠ | adversaire (3 cartes, connues : A♦ R♥ R♠) | table : (vide)
+        heuristique : Attaquer avec A♥   →   expert : Attaquer avec A♣ A♠
+
+• ajout ou passer : attaquer → attaquer (carte plus faible)   —   18 cas, 2.0% des erreurs
+    en moyenne : 5.6 cartes en main contre 2.9 chez l'adversaire, 2.1 atout(s) en main
+    l'heuristique joue un atout dans 94% des cas, l'expert dans 0%
+    ex. atout coeur, pioche 0 | moi : 7♦ A♦ 10♥ V♥ A♥ | adversaire (5 cartes, connues : R♦ D♥ R♥ V♠ D♠) | table : A♣/6♥
+        heuristique : Attaquer avec A♥   →   expert : Attaquer avec A♦
+    ex. atout trefle, pioche 0 | moi : D♣ A♣ A♦ 9♥ V♥ | adversaire (5 cartes, connues : V♣ V♦ D♦ V♠ D♠) | table : A♥/8♣
+        heuristique : Attaquer avec A♣   →   expert : Attaquer avec A♦
+    ex. atout coeur, pioche 0 | moi : R♣ A♦ V♥ R♥ A♠ | adversaire (2 cartes, connues : A♣ 7♦) | table : R♠/—
+        heuristique : Attaquer avec R♥   →   expert : Attaquer avec R♣
+
+• défense : battre → transférer   —   18 cas, 2.0% des erreurs
+    en moyenne : 5.7 cartes en main contre 3.1 chez l'adversaire, 3.1 atout(s) en main
+    l'heuristique joue un atout dans 61% des cas, l'expert dans 89%
+    ex. atout pique, pioche 0 | moi : D♣ 9♦ 8♠ 10♠ V♠ R♠ | adversaire (5 cartes, connues : V♣ V♦ D♦ A♦ A♠) | table : 8♣/—
+        heuristique : Battre 8♣ avec D♣   →   expert : Transférer avec 8♠
+    ex. atout trefle, pioche 0 | moi : V♣ D♣ A♣ A♦ 9♥ V♥ A♥ | adversaire (3 cartes, connues : 8♣ D♦ D♠) | table : V♦/—  V♠/—
+        heuristique : Battre V♦ avec A♦   →   expert : Transférer avec V♣
+    ex. atout carreau, pioche 0 | moi : R♦ A♦ V♥ | adversaire (6 cartes, connues : 10♦ D♦ R♥ A♥ R♠ A♠) | table : V♣/—
+        heuristique : Battre V♣ avec R♦   →   expert : Transférer avec V♥
+
+• défense : transférer → battre   —   16 cas, 1.8% des erreurs
+    en moyenne : 6.2 cartes en main contre 3.6 chez l'adversaire, 2.2 atout(s) en main
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 19%
+    ex. atout pique, pioche 0 | moi : 8♣ 8♥ 10♥ 9♠ 10♠ D♠ | adversaire (3 cartes, connues : R♣ 8♠ V♠) | table : 10♣/—
+        heuristique : Transférer avec 10♥   →   expert : Battre 10♣ avec 9♠
+    ex. atout trefle, pioche 0 | moi : R♣ A♣ 9♦ R♦ A♦ 9♥ 10♠ R♠ A♠ | adversaire (4 cartes, connues : 10♣ V♣ V♦ V♠) | table : 10♦/—
+        heuristique : Transférer avec 10♠   →   expert : Battre 10♦ avec A♦
+    ex. atout pique, pioche 0 | moi : 8♥ 10♥ 8♠ D♠ A♠ | adversaire (4 cartes, connues : D♣ R♦ D♥ R♠) | table : 10♣/—
+        heuristique : Transférer avec 10♥   →   expert : Battre 10♣ avec 8♠
+
+• défense : battre → battre (autre carte de même valeur)   —   13 cas, 1.4% des erreurs
+    en moyenne : 5.4 cartes en main contre 3.8 chez l'adversaire, 2.8 atout(s) en main
+    l'heuristique joue un atout dans 31% des cas, l'expert dans 69%
+    ex. atout carreau, pioche 0 | moi : A♣ 9♦ D♦ A♦ 6♠ A♠ | adversaire (5 cartes, connues : V♦ R♦ D♥ A♥ D♠) | table : V♠/—
+        heuristique : Battre V♠ avec A♠   →   expert : Battre V♠ avec 9♦
+    ex. atout carreau, pioche 0 | moi : V♣ 7♦ V♦ R♦ D♥ V♠ | adversaire (3 cartes, connues : D♦ A♦ R♥) | table : 6♥/—
+        heuristique : Battre 6♥ avec D♥   →   expert : Battre 6♥ avec 7♦
+    ex. atout trefle, pioche 0 | moi : 7♣ A♣ D♥ D♠ | adversaire (3 cartes, connues : D♣ A♥ A♠) | table : 10♥/R♥  10♠/—
+        heuristique : Battre 10♠ avec D♠   →   expert : Battre 10♠ avec 7♣
+
+• défense : prendre → transférer   —   12 cas, 1.3% des erreurs
+    en moyenne : 5.2 cartes en main contre 4.0 chez l'adversaire, 1.6 atout(s) en main
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 0%
+    ex. atout trefle, pioche 0 | moi : 9♣ V♣ D♣ D♥ A♥ V♠ D♠ R♠ A♠ | adversaire (2 cartes, connues : A♣ 9♦) | table : R♣/—
+        heuristique : Prendre   →   expert : Transférer avec R♠
+    ex. atout trefle, pioche 0 | moi : 7♣ 8♣ V♥ | adversaire (10 cartes, connues : D♣ R♣ A♣ 9♦ D♦ R♦ R♥ V♠ D♠ A♠) | table : V♣/—
+        heuristique : Prendre   →   expert : Transférer avec V♥
+    ex. atout trefle, pioche 0 | moi : V♣ V♦ D♦ A♦ D♥ A♥ V♠ D♠ A♠ | adversaire (4 cartes, connues : R♣ A♣ 7♥ R♥) | table : D♣/—
+        heuristique : Prendre   →   expert : Transférer avec D♦
+
+(analyse du PIMC : 382 s)
+
+==============================================================================
+2. PIOCHE PRESQUE VIDE (1 ou 2 cartes) : là où le PIMC choisit autrement
+==============================================================================
+Décisions analysées : 1122   dont divergences : 200 (17.8%)
+
+Par situation :
+  défense               560 décisions   divergences :    74 (13.2%)
+  ajout ou passer       318 décisions   divergences :    37 (11.6%)
+  attaque initiale      244 décisions   divergences :    89 (36.5%)
+
+Les 12 cas les plus fréquents (heuristique → expert) :
+
+• attaque initiale : attaquer → attaquer (carte plus forte)   —   73 cas, 36.5% des divergences
+    en moyenne : 6.3 cartes en main contre 6.5 chez l'adversaire, 2.0 atout(s) en main, pioche 2.9
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 36%
+    ex. atout pique, pioche 3 | moi : 6♣ R♣ 8♥ R♥ 8♠ D♠ R♠ | adversaire (6 cartes, connues : A♣ D♦) | table : (vide)
+        heuristique : Attaquer avec 6♣   →   expert : Attaquer avec 8♥
+    ex. atout pique, pioche 4 | moi : D♣ 10♦ R♦ 6♥ 9♥ 10♠ D♠ A♠ | adversaire (6 cartes, connues : aucune) | table : (vide)
+        heuristique : Attaquer avec 6♥   →   expert : Attaquer avec R♦
+    ex. atout pique, pioche 4 | moi : D♣ 10♦ 6♥ 9♥ 10♠ D♠ A♠ | adversaire (7 cartes, connues : R♦) | table : (vide)
+        heuristique : Attaquer avec 6♥   →   expert : Attaquer avec D♠
+
+• défense : battre → prendre   —   43 cas, 21.5% des divergences
+    en moyenne : 6.1 cartes en main contre 5.7 chez l'adversaire, 2.3 atout(s) en main, pioche 3.0
+    l'heuristique joue un atout dans 74% des cas, l'expert dans 0%
+    ex. atout pique, pioche 4 | moi : R♣ 8♦ R♥ A♥ 6♠ R♠ | adversaire (7 cartes, connues : D♣ 10♦ 10♠) | table : R♦/—
+        heuristique : Battre R♦ avec 6♠   →   expert : Prendre
+    ex. atout pique, pioche 4 | moi : R♣ 8♦ R♦ R♥ A♥ 6♠ R♠ | adversaire (6 cartes, connues : D♣ 10♦ 10♠) | table : D♠/—
+        heuristique : Battre D♠ avec R♠   →   expert : Prendre
+    ex. atout carreau, pioche 4 | moi : R♣ A♣ 8♦ V♦ A♦ 9♥ R♥ | adversaire (4 cartes, connues : 10♥) | table : V♠/R♠  V♥/—
+        heuristique : Battre V♥ avec R♥   →   expert : Prendre
+
+• ajout ou passer : attaquer → passer   —   37 cas, 18.5% des divergences
+    en moyenne : 5.8 cartes en main contre 5.0 chez l'adversaire, 2.3 atout(s) en main, pioche 3.3
+    l'heuristique joue un atout dans 54% des cas, l'expert dans 0%
+    ex. atout carreau, pioche 2 | moi : R♣ A♣ A♦ R♥ R♠ | adversaire (3 cartes, connues : aucune) | table : 8♠/9♦  8♥/A♥
+        heuristique : Attaquer avec A♣   →   expert : Passer
+    ex. atout carreau, pioche 4 | moi : D♦ R♦ 8♥ 10♥ | adversaire (7 cartes, connues : A♣ A♦) | table : V♠/R♠  V♥/—
+        heuristique : Attaquer avec R♦   →   expert : Passer
+    ex. atout coeur, pioche 3 | moi : 8♣ A♣ 8♦ D♦ R♦ V♥ A♥ 8♠ D♠ R♠ A♠ | adversaire (3 cartes, connues : aucune) | table : 6♠/V♠  6♦/10♥  6♥/—
+        heuristique : Attaquer avec V♥   →   expert : Passer
+
+• attaque initiale : attaquer → attaquer (moins de cartes)   —   16 cas, 8.0% des divergences
+    en moyenne : 7.1 cartes en main contre 6.5 chez l'adversaire, 1.7 atout(s) en main, pioche 2.8
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 50%
+    ex. atout pique, pioche 2 | moi : D♣ D♦ R♦ 8♠ V♠ D♠ | adversaire (6 cartes, connues : aucune) | table : (vide)
+        heuristique : Attaquer avec D♣ D♦   →   expert : Attaquer avec D♦
+    ex. atout coeur, pioche 2 | moi : 7♣ D♣ R♣ R♦ R♥ 7♠ V♠ | adversaire (7 cartes, connues : A♣ A♦ D♠ A♠) | table : (vide)
+        heuristique : Attaquer avec 7♣ 7♠   →   expert : Attaquer avec R♥
+    ex. atout pique, pioche 4 | moi : V♣ 10♦ A♦ 10♥ R♥ A♠ | adversaire (8 cartes, connues : D♣ 8♥ D♥ 8♠) | table : (vide)
+        heuristique : Attaquer avec 10♦ 10♥   →   expert : Attaquer avec V♣
+
+• défense : battre → transférer   —   12 cas, 6.0% des divergences
+    en moyenne : 6.4 cartes en main contre 4.9 chez l'adversaire, 2.2 atout(s) en main, pioche 2.6
+    l'heuristique joue un atout dans 92% des cas, l'expert dans 33%
+    ex. atout pique, pioche 4 | moi : D♦ 10♥ V♥ R♥ 10♠ V♠ | adversaire (5 cartes, connues : aucune) | table : D♣/—
+        heuristique : Battre D♣ avec 10♠   →   expert : Transférer avec D♦
+    ex. atout carreau, pioche 4 | moi : 8♣ 9♣ 9♦ V♦ D♦ A♦ 10♥ 10♠ | adversaire (5 cartes, connues : V♥ V♠) | table : D♥/—
+        heuristique : Battre D♥ avec 9♦   →   expert : Transférer avec D♦
+    ex. atout carreau, pioche 3 | moi : 10♣ D♣ R♣ R♦ 9♥ 10♥ D♠ | adversaire (5 cartes, connues : A♣) | table : R♠/—
+        heuristique : Battre R♠ avec R♦   →   expert : Transférer avec R♣
+
+• défense : battre → battre (carte plus forte)   —   10 cas, 5.0% des divergences
+    en moyenne : 7.0 cartes en main contre 5.0 chez l'adversaire, 2.3 atout(s) en main, pioche 3.0
+    l'heuristique joue un atout dans 40% des cas, l'expert dans 70%
+    ex. atout coeur, pioche 4 | moi : 7♣ 8♣ D♦ 8♥ R♥ A♥ R♠ A♠ | adversaire (5 cartes, connues : aucune) | table : 10♦/—
+        heuristique : Battre 10♦ avec D♦   →   expert : Battre 10♦ avec 8♥
+    ex. atout coeur, pioche 4 | moi : 8♣ 9♦ 10♦ V♦ V♥ R♥ | adversaire (5 cartes, connues : A♠) | table : D♦/—
+        heuristique : Battre D♦ avec V♥   →   expert : Battre D♦ avec R♥
+    ex. atout pique, pioche 4 | moi : A♣ R♦ 10♠ V♠ | adversaire (7 cartes, connues : V♣ D♣) | table : 7♦/6♠  7♥/—
+        heuristique : Battre 7♥ avec 10♠   →   expert : Battre 7♥ avec V♠
+
+• défense : transférer → battre   —   4 cas, 2.0% des divergences
+    en moyenne : 6.0 cartes en main contre 5.2 chez l'adversaire, 1.8 atout(s) en main, pioche 2.2
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 50%
+    ex. atout pique, pioche 1 | moi : 7♦ 10♦ 8♥ 10♠ V♠ A♠ | adversaire (6 cartes, connues : D♣ R♦ D♠) | table : 8♦/—
+        heuristique : Transférer avec 8♥   →   expert : Battre 8♦ avec 10♦
+    ex. atout trefle, pioche 4 | moi : R♦ R♥ A♥ 9♠ R♠ A♠ | adversaire (5 cartes, connues : aucune) | table : 9♦/—
+        heuristique : Transférer avec 9♠   →   expert : Battre 9♦ avec R♦
+    ex. atout pique, pioche 2 | moi : 10♦ D♦ R♥ 9♠ D♠ R♠ | adversaire (5 cartes, connues : A♣ 6♠) | table : 10♥/—
+        heuristique : Transférer avec 10♦   →   expert : Battre 10♥ avec R♠
+
+• défense : prendre → transférer   —   4 cas, 2.0% des divergences
+    en moyenne : 5.5 cartes en main contre 5.0 chez l'adversaire, 1.0 atout(s) en main, pioche 2.0
+    l'heuristique joue un atout dans 0% des cas, l'expert dans 0%
+    ex. atout coeur, pioche 2 | moi : R♣ 6♦ V♦ 6♥ V♥ D♠ | adversaire (5 cartes, connues : 10♣ A♦) | table : D♥/—
+        heuristique : Prendre   →   expert : Transférer avec D♠
+    ex. atout trefle, pioche 2 | moi : 10♣ 9♥ V♥ D♥ 10♠ V♠ | adversaire (5 cartes, connues : A♥) | table : D♣/—
+        heuristique : Prendre   →   expert : Transférer avec D♥
+    ex. atout coeur, pioche 2 | moi : 10♦ D♦ V♥ 9♠ 10♠ | adversaire (5 cartes, connues : aucune) | table : D♥/—  D♠/—
+        heuristique : Prendre   →   expert : Transférer avec D♦
+
+• défense : battre → battre (autre carte de même valeur)   —   1 cas, 0.5% des divergences
+    en moyenne : 6.0 cartes en main contre 5.0 chez l'adversaire, 2.0 atout(s) en main, pioche 4.0
+    l'heuristique joue un atout dans 100% des cas, l'expert dans 0%
+    ex. atout pique, pioche 4 | moi : D♣ A♣ V♥ D♥ 6♠ A♠ | adversaire (5 cartes, connues : 10♦) | table : 6♥/—
+        heuristique : Battre 6♥ avec 6♠   →   expert : Battre 6♥ avec V♥

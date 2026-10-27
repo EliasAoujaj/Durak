@@ -1,0 +1,38 @@
+128 combinaisons mesurées en 75 s (4000 parties chacune)
+
+Référence, aucune règle : 50.0% (doit être proche de 50 %)
+
+1. EFFET DE CHAQUE RÈGLE (moyenne sur toutes les combinaisons, ± 0.3%)
+   presque_vide                +1.2%   utile
+   pas_atout_ouverture_fin     +0.6%   utile
+   transfert_libre             +0.5%   utile
+   simples                     +0.4%   utile
+   planification               +0.3%   utile
+   ouverture_forte             -1.6%   nuisible
+   pas_atout_ajout_fin        -12.0%   nuisible
+
+2. INTERACTIONS (de combien l'effet de A change quand B est présente, ± 0.5%)
+   presque_vide est plus utile avec pas_atout_ajout_fin : +2.5%  ← significatif
+   pas_atout_ajout_fin est plus utile avec ouverture_forte : +0.8%  ← significatif
+   presque_vide est moins utile avec ouverture_forte : -0.6%  ← significatif
+   transfert_libre est moins utile avec pas_atout_ajout_fin : -0.6%  ← significatif
+   planification est moins utile avec pas_atout_ajout_fin : -0.2%
+   transfert_libre est moins utile avec simples : -0.2%
+   transfert_libre est plus utile avec presque_vide : +0.2%
+   pas_atout_ouverture_fin est moins utile avec ouverture_forte : -0.2%
+   planification est moins utile avec presque_vide : -0.1%
+   transfert_libre est plus utile avec ouverture_forte : +0.1%
+
+3. LES 5 MEILLEURES COMBINAISONS (premier tour)
+    52.6%   ['pas_atout_ouverture_fin', 'planification', 'presque_vide', 'simples', 'transfert_libre']
+    52.3%   ['pas_atout_ouverture_fin', 'planification', 'simples', 'transfert_libre']
+    52.2%   ['pas_atout_ouverture_fin', 'planification', 'presque_vide', 'transfert_libre']
+    52.1%   ['pas_atout_ouverture_fin', 'planification', 'transfert_libre']
+    52.0%   ['pas_atout_ouverture_fin', 'presque_vide', 'simples', 'transfert_libre']
+
+4. VÉRIFICATION sur 20000 parties neuves
+    52.3% ± 0.7%   ['pas_atout_ouverture_fin', 'planification', 'presque_vide', 'simples', 'transfert_libre']   (règles utiles seules)
+    51.7% ± 0.7%   ['pas_atout_ouverture_fin', 'planification', 'simples', 'transfert_libre']   (combinaison du classement)
+    52.1% ± 0.7%   ['pas_atout_ouverture_fin', 'planification', 'presque_vide', 'transfert_libre']   (combinaison du classement)
+
+Durée totale : 85 s
