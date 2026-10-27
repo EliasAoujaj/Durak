@@ -1,0 +1,3 @@
+JoueurPimc+          victoires  57.2% ± 2.2%   durak  42.8%   position moyenne 0.427
+JoueurFinal          victoires  42.8% ± 2.2%   durak  57.2%   position moyenne 0.573
+(957 s)

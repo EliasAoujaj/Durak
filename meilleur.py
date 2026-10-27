@@ -11,15 +11,8 @@ N_DONNES_PIMC = 1000
 
 if __name__ == "__main__":
     with nouvel_executeur() as executeur:
+        # à comparer aux 56,3 % de JoueurPimc contre JoueurFinal
         debut = time.perf_counter()
-        afficher(match([JoueurFinalAmeliore(), JoueurFinal(**REGLAGES_RECHERCHE)],
-                       N_DONNES, executeur=executeur))
+        afficher(match([JoueurPimcAmeliore(pioche_max=2), JoueurFinal(**REGLAGES_RECHERCHE)],
+                       N_DONNES_PIMC, executeur=executeur))
         print(f"({time.perf_counter() - debut:.0f} s)")
-
-        if AVEC_PIMC:
-            # à comparer aux 56,3 % de JoueurPimc contre JoueurFinal
-            debut = time.perf_counter()
-            print()
-            afficher(match([JoueurPimcAmeliore(pioche_max=2), JoueurFinal(**REGLAGES_RECHERCHE)],
-                           N_DONNES_PIMC, executeur=executeur))
-            print(f"({time.perf_counter() - debut:.0f} s)")
