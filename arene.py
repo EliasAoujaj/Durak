@@ -1,7 +1,9 @@
 """Fait s'affronter des stratégies et mesure leurs performances."""
 
 import math
+import os
 import time
+from concurrent.futures import Executor, ProcessPoolExecutor
 from dataclasses import dataclass
 
 from joueurs import Joueur, JoueurAleatoire, JoueurPetit
@@ -62,14 +64,31 @@ def demi_intervalle(p: float, n: int) -> float:
     return 1.96 * math.sqrt(p * (1 - p) / n)
 
 
-def match(joueurs: list[Joueur], n_donnes: int, seed_depart: int = 0) -> list[Resultat]:
+def match(joueurs: list[Joueur], n_donnes: int, seed_depart: int = 0,
+          executeur: Executor | None = None) -> list[Resultat]:
     """Fait jouer les joueurs sur n_donnes donnes.
 
     Chaque donne est jouée autant de fois qu'il y a de joueurs, en décalant
     tout le monde d'une place à chaque fois : chacun occupe chaque place
     avec les mêmes cartes, ce qui supprime l'avantage de la donne et de la position.
     Les joueurs doivent être des objets distincts (deux instances, pas deux fois la même).
+
+    Si un executeur est fourni, les donnes sont réparties entre plusieurs processus.
     """
+    if executeur is None:
+        return match_sequentiel(joueurs, n_donnes, seed_depart)
+
+    # découpage en blocs de donnes consécutives, un peu plus nombreux que les
+    # processus pour que tous les cœurs restent occupés jusqu'au bout
+    n_blocs = min(n_donnes, 4 * nombre_coeurs())
+    bornes = [seed_depart + n_donnes * i // n_blocs for i in range(n_blocs + 1)]
+    taches = [executeur.submit(match_sequentiel, joueurs, fin - debut, debut)
+              for debut, fin in zip(bornes, bornes[1:]) if fin > debut]
+    return fusionner([tache.result() for tache in taches])
+
+
+def match_sequentiel(joueurs: list[Joueur], n_donnes: int, seed_depart: int) -> list[Resultat]:
+    """Le match joué entièrement dans le processus courant."""
     n = len(joueurs)
     if len({id(j) for j in joueurs}) != n:
         raise ValueError("chaque place doit avoir son propre objet joueur")
@@ -87,6 +106,30 @@ def match(joueurs: list[Joueur], n_donnes: int, seed_depart: int = 0) -> list[Re
     return resultats
 
 
+def fusionner(blocs: list[list[Resultat]]) -> list[Resultat]:
+    """Additionne les résultats de plusieurs blocs de donnes, joueur par joueur."""
+    total = [Resultat(res.nom, parties=0) for res in blocs[0]]
+    for bloc in blocs:
+        for t, res in zip(total, bloc):
+            t.parties += res.parties
+            t.somme_positions += res.somme_positions
+            t.victoires += res.victoires
+            t.duraks += res.duraks
+    return total
+
+
+def nombre_coeurs() -> int:
+    return os.cpu_count() or 1
+
+
+def nouvel_executeur(processus: int | None = None) -> ProcessPoolExecutor:
+    """Un groupe de processus prêt à travailler. À utiliser avec « with ».
+
+    Sous Windows, il ne doit être créé que dans le bloc if __name__ == "__main__".
+    """
+    return ProcessPoolExecutor(max_workers=processus or nombre_coeurs())
+
+
 def afficher(resultats: list[Resultat]) -> None:
     for res in resultats:
         print(f"{res.nom:<20} victoires {res.taux_victoire:6.1%} "
@@ -95,10 +138,17 @@ def afficher(resultats: list[Resultat]) -> None:
 
 
 if __name__ == "__main__":
+    joueurs = [JoueurPetit(), JoueurAleatoire(1)]
+
     debut = time.perf_counter()
-    resultats = match([JoueurPetit(), JoueurAleatoire(1)], n_donnes=2000)
-    duree = time.perf_counter() - debut
+    resultats = match(joueurs, n_donnes=2000)
+    duree_seq = time.perf_counter() - debut
+    print(f"Un seul cœur : {duree_seq:.1f} s")
     afficher(resultats)
-    n_parties = resultats[0].parties
-    print(f"{n_parties} parties en {duree:.1f} s, "
-          f"soit {duree / n_parties * 1000:.2f} ms par partie")
+
+    with nouvel_executeur() as executeur:
+        debut = time.perf_counter()
+        resultats = match(joueurs, n_donnes=2000, executeur=executeur)
+        duree_par = time.perf_counter() - debut
+    print(f"\n{nombre_coeurs()} cœurs : {duree_par:.1f} s  (accélération x{duree_seq / duree_par:.1f})")
+    afficher(resultats)
